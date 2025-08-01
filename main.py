@@ -2,116 +2,127 @@ import os
 import datetime
 import time
 import tkinter as tk
+import sys
+import logging
 from tkinter import simpledialog
-from win10toast_click import ToastNotifier
-import threading
 
-# --- تنظیمات اولیه ---
+# پیکربندی لاگ برای حالت noconsole
+logging.basicConfig(
+    filename="power_alert.log",
+    level=logging.ERROR,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+# تلاش برای بارگذاری ToastNotifier
+try:
+    from win10toast_click import ToastNotifier
+except ImportError:
+    logging.error("کتابخانه win10toast_click نصب نشده است.")
+    raise ImportError(
+        "کتابخانه win10toast_click نصب نشده است. با دستور 'pip install win10toast_click' نصب کنید."
+    )
+
+# ایجاد شیء toaster
 toaster = ToastNotifier()
 
-# --- توابع اصلی برنامه ---
+
+# تابع کمکی برای نمایش نوتیفیکیشن
+def show_notification(title, msg, duration=10, buttons=None, callback_on_click=None):
+    try:
+        toaster.show_toast(
+            title=title,
+            msg=msg,
+            duration=duration,
+            threaded=True,
+            buttons=buttons,
+            callback_on_click=callback_on_click,
+        )
+    except Exception as e:
+        logging.error(f"خطا در نمایش نوتیفیکیشن '{title}': {e}")
 
 
+# خاموش کردن سیستم
 def shutdown_computer():
-    toaster.show_toast(
-        title= "درحال خاموش کردن ...",
-        msg="سیستم تا 1 دقیقه دیگر خاموش میشه ",
-        duration=10,
-        threaded=True,
-    )
+    show_notification("درحال خاموش کردن ...", "سیستم تا 1 دقیقه دیگر خاموش میشه", 10)
     os.system("shutdown /s /t 60")
 
 
+# به تأخیر انداختن خاموشی
 def postpone_shutdown():
-    toaster.show_toast(
-        "به تاخیر افتاد!",
-        "خیالت راحت، ۳۰ دقیقه دیگه دوباره ازت می‌پرسم.",
-        duration=10,
-        threaded=True,
+    show_notification(
+        "به تاخیر افتاد!", "خیالت راحت، ۳۰ دقیقه دیگه دوباره ازت می‌پرسم.", 10
     )
-
-    # ۳۰ دقیقه صبر می‌کند (۱۸۰۰ ثانیه)
     time.sleep(1800)
-
-    # بعد از ۳۰ دقیقه، دوباره همان نوتیفیکیشن را ارسال می‌کند
     send_shutdown_notification()
 
 
+# ارسال نوتیفیکیشن هشدار
 def send_shutdown_notification():
-    # چون تابع postpone_shutdown در یک ترد جدا اجرا می‌شود،
-    # باید برای هر نوتیفیکیشن یک ترد جدید ساخت.
-    threading.Thread(
-        target=toaster.show_toast,
-        kwargs={
-            "title": "!!! هشدار قطعی برق !!!",
-            "msg": "قراره برق‌ها بره، فایل‌هات رو ذخیره کن! می‌خوای سیستم رو خاموش کنم؟",
-            "duration": 30,  # نوتیفیکیشن ۳۰ ثانیه می‌ماند
-            "threaded": False,  # این باید False باشد تا ترد اصلی منتظر بماند
-            "buttons": [
-                {
-                    "activation_type": "callback",
-                    "arguments": "yes",
-                    "content": "آره، خاموش کن",
-                },
-                {
-                    "activation_type": "callback",
-                    "arguments": "no",
-                    "content": "نه، ۳۰ دقیقه بعد بپرس",
-                },
-            ],
-            "callback_on_click": {"yes": shutdown_computer, "no": postpone_shutdown},
+    buttons = [
+        {"activation_type": "callback", "arguments": "yes", "content": "آره، خاموش کن"},
+        {
+            "activation_type": "callback",
+            "arguments": "no",
+            "content": "نه، ۳۰ دقیقه بعد بپرس",
         },
-    ).start()
+    ]
+    callbacks = {"yes": shutdown_computer, "no": postpone_shutdown}
+    show_notification(
+        "!!! هشدار قطعی برق !!!",
+        "قراره برق‌ها بره، فایل‌هات رو ذخیره کن! می‌خوای سیستم رو خاموش کنم؟",
+        duration=30,
+        buttons=buttons,
+        callback_on_click=callbacks,
+    )
 
 
+# دریافت زمان قطعی برق از کاربر
 def get_outage_time_from_user():
-    #یک پنجره برای پرسیدن زمان قطعی برق باز می‌کند
     root = tk.Tk()
-    root.withdraw()  # پنجره اصلی را مخفی می‌کند
-
+    root.withdraw()
     while True:
         user_input = simpledialog.askstring(
             "زمان قطعی برق",
             "سلام ایرانی امروز برق ها کی میره 🤣 به این صورت وارد کن مثلا (14:20)",
         )
-
-        if not user_input:  # اگر کاربر پنجره را بست
+        if user_input is None:
+            root.destroy()
             return None
-
         try:
-            # تبدیل ورودی به شیء زمان
             t = datetime.datetime.strptime(user_input, "%H:%M").time()
+            root.destroy()
             return t
         except ValueError:
-            # اگر فرمت اشتباه بود، دوباره می‌پرسد
-            print("فرمت ورودی اشتباه است.")
-            # اینجا می‌توان یک پیام خطا با tkinter هم نشان داد
+            show_notification(
+                "خطا در فرمت", "فرمت ساعت اشتباه بود، لطفا دوباره تلاش کن.", 5
+            )
 
 
-# --- حلقه اصلی برنامه ---
-if __name__ == "__main__":
+# تابع اصلی
+def main():
     target_time = get_outage_time_from_user()
+    if not target_time:
+        show_notification("خطا", "زمانی وارد نشد. برنامه بسته می‌شود.", 5)
+        time.sleep(5)
+        sys.exit()
 
-    if target_time:
-        # محاسبه زمان ارسال نوتیفیکیشن (۱۰ دقیقه قبل از زمان اصلی)
-        target_dt = datetime.datetime.combine(datetime.date.today(), target_time)
-        notification_dt = target_dt - datetime.timedelta(minutes=10)
+    target_dt = datetime.datetime.combine(datetime.date.today(), target_time)
+    notification_dt = target_dt - datetime.timedelta(minutes=10)
 
-        print(f"زمان قطعی برق امروز: {target_time.strftime('%H:%M')}")
-        print(
-            f"نوتیفیکیشن هشدار در ساعت: {notification_dt.strftime('%H:%M')} ارسال خواهد شد."
-        )
+    show_notification(
+        "زمان با موفقیت تنظیم شد",
+        f"زمان قطعی برق: {target_time.strftime('%H:%M')}\nهشدار در ساعت {notification_dt.strftime('%H:%M')} ارسال می‌شود.",
+        10,
+    )
 
-        # حلقه اصلی برای چک کردن زمان
-        while True:
-            now = datetime.datetime.now()
-            if now >= notification_dt:
-                send_shutdown_notification()
-                # بعد از ارسال اولین نوتیفیکیشن، حلقه تمام می‌شود
-                # چون بقیه منطق در توابع callback مدیریت می‌شود
-                break
+    while True:
+        now = datetime.datetime.now()
+        if now >= notification_dt:
+            send_shutdown_notification()
+            break
+        time.sleep(30)
 
-            # هر ۳۰ ثانیه یک بار زمان را چک می‌کند
-            time.sleep(30)
-    else:
-        print("زمانی وارد نشد. برنامه بسته می‌شود.")
+
+# اجرای برنامه
+if __name__ == "__main__":
+    main()

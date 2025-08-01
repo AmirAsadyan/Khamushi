@@ -1,0 +1,12 @@
+cabarchive
+cx_Freeze
+cx_Logging
+filelock
+lief
+packaging
+plyer
+pypiwin32
+pywin32
+setuptools
+striprtf
+win10toast-click

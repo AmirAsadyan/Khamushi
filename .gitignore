@@ -1,0 +1,13 @@
+# Ignore build and distribution folders
+build/
+dist/
+__pycache__/
+.vscode/
+.idea/
+# Ignore Python egg and wheel files
+*.egg-info/
+*.pyc
+*.pyo
+*.pyd
+# Ignore log files
+*.log

@@ -10,3 +10,4 @@ pywin32
 setuptools
 striprtf
 win10toast-click
+winotify

@@ -11,3 +11,4 @@ __pycache__/
 *.pyd
 # Ignore log files
 *.log
+*test*

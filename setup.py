@@ -21,14 +21,15 @@ executables = [
         "main.py",
         base=base,
         target_name=f"{name}.exe",
-        icon="icon.ico",  # <-- نکته: اینجا می‌تونی آیکون برنامه رو مشخص کنی
+        icon="icon.ico",
     )
 ]
 
 # تعریف پکیج‌ها و فایل‌هایی که باید در فایل نهایی گنجانده شوند
 build_exe_options = {
-    "packages": ["os", "tkinter", "win10toast_click"],
-    "include_files": ["icon.ico"],  # اگر فایل اضافی مثل عکس یا دیتابیس داشتی اینجا اضافه کن
+    # این بخش برای کتابخانه جدید بروزرسانی شد
+    "packages": ["os", "tkinter", "winotify"],
+    "include_files": ["icon.ico"],
     "excludes": [],
 }
 

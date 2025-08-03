@@ -10,7 +10,6 @@ author = "Amir Asadyan"
 # --- تنظیمات اصلی برای cx_Freeze ---
 
 # تعیین اینکه برنامه گرافیکی است و نیازی به کنسول (صفحه سیاه) ندارد
-# برای ویندوز از 'Win32GUI' استفاده می‌کنیم
 base = None
 if sys.platform == "win32":
     base = "Win32GUI"
@@ -27,20 +26,27 @@ executables = [
 
 # تعریف پکیج‌ها و فایل‌هایی که باید در فایل نهایی گنجانده شوند
 build_exe_options = {
-    # این بخش برای کتابخانه جدید بروزرسانی شد
     "packages": ["os", "tkinter", "winotify"],
     "include_files": ["icon.ico"],
     "excludes": [],
 }
 
+# ===== این بخش برای درخواست دسترسی ادمین اضافه شده است =====
+bdist_msi_options = {
+    # با True کردن این گزینه، نصب برای تمام کاربران فعال می‌شود
+    # و به طور خودکار درخواست دسترسی ادمین (UAC) می‌کند.
+    "all_users": True,
+}
+# ==========================================================
+
 
 # --- اجرای تابع setup ---
-
 setup(
     name=name,
     version=version,
     description=description,
     author=author,
-    options={"build_exe": build_exe_options},
+    # در اینجا آپشن جدید را به setup اضافه می‌کنیم
+    options={"build_exe": build_exe_options, "bdist_msi": bdist_msi_options},
     executables=executables,
 )

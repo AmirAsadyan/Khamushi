@@ -2,10 +2,9 @@ import os
 import datetime
 import time
 import tkinter as tk
-import tkinter.messagebox as msgbox
+from tkinter import simpledialog
 import sys
 import logging
-from tkinter import simpledialog
 
 # پیکربندی لاگ برای حالت noconsole
 logging.basicConfig(
@@ -50,20 +49,82 @@ def postpone_shutdown():
     send_shutdown_notification()
 
 
-def send_shutdown_notification():
-    """پرسیدن سوال خاموشی از طریق پنجره گرافیکی"""
-    root = tk.Tk()
-    root.withdraw()
-    answer = msgbox.askyesno(
-        "!!! هشدار قطعی برق !!!",
-        "قراره برق‌ها بره، فایل‌هات رو ذخیره کن!\n\nمی‌خوای سیستم رو خاموش کنم؟",
+def cancel_shutdown_process():
+    """کل فرآیند خاموشی را برای امروز لغو می‌کند."""
+    notification = Notification(
+        app_id="Khamushi",
+        title="عملیات لغو شد",
+        msg="فرآیند خاموشی برای امروز به طور کامل لغو شد.",
+        duration="short",
     )
-    root.destroy()
+    notification.show()
+    # برنامه به طور طبیعی تمام می‌شود
 
-    if answer:
+
+# ===== این تابع جدید برای ساخت پنجره سفارشی است =====
+def ask_shutdown_options():
+    """یک پنجره سفارشی با سه دکمه برای تصمیم‌گیری کاربر باز می‌کند."""
+    root = tk.Tk()
+    root.title("!!! هشدار قطعی برق !!!")
+    root.geometry("350x120")
+    root.resizable(False, False)
+
+    # متغیر برای نگهداری جواب کاربر
+    user_choice = tk.StringVar()
+    user_choice.set("")  # مقدار اولیه
+
+    def set_choice_and_close(choice):
+        user_choice.set(choice)
+        root.destroy()
+
+    label = tk.Label(
+        root,
+        text="قراره برق‌ها بره، فایل‌هات رو ذخیره کن!\n\nمی‌خوای سیستم رو خاموش کنم؟",
+        pady=10,
+    )
+    label.pack()
+
+    frame = tk.Frame(root)
+    frame.pack(pady=5)
+
+    btn_yes = tk.Button(
+        frame,
+        text="آره، خاموش کن",
+        width=15,
+        command=lambda: set_choice_and_close("yes"),
+    )
+    btn_yes.pack(side=tk.LEFT, padx=5)
+
+    btn_postpone = tk.Button(
+        frame,
+        text="نه، ۳۰ دقیقه بعد",
+        width=15,
+        command=lambda: set_choice_and_close("postpone"),
+    )
+    btn_postpone.pack(side=tk.LEFT, padx=5)
+
+    btn_cancel = tk.Button(
+        frame, text="لغو کامل", width=15, command=lambda: set_choice_and_close("cancel")
+    )
+    btn_cancel.pack(side=tk.LEFT, padx=5)
+
+    # این تابع پنجره را تا زمانی که بسته شود، نگه می‌دارد
+    root.mainloop()
+    return user_choice.get()
+
+
+# ===== این تابع برای استفاده از پنجره جدید اصلاح شد =====
+def send_shutdown_notification():
+    """پرسیدن سوال خاموشی از طریق پنجره سفارشی"""
+    answer = ask_shutdown_options()
+
+    if answer == "yes":
         shutdown_computer()
-    else:
+    elif answer == "postpone":
         postpone_shutdown()
+    elif answer == "cancel":
+        cancel_shutdown_process()
+    # اگر کاربر پنجره را ببندد، هیچ کاری انجام نمی‌شود
 
 
 def get_outage_time_from_user():
